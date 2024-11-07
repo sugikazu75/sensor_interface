@@ -50,6 +50,7 @@ TakasokoSps::TakasokoSps(ros::NodeHandle nh, ros::NodeHandle nhp): nh_(nh), nhp_
   power_info_pub_ = nh_.advertise<takasako_sps::PowerInfo>("power_info", 5);
   power_on_sub_ = nh_.subscribe<std_msgs::Empty>("power_on_cmd", 1, &TakasokoSps::powerOnCallback, this, ros::TransportHints().tcpNoDelay());
   power_off_sub_ = nh_.subscribe<std_msgs::Empty>("power_off_cmd", 1, &TakasokoSps::powerOffCallback, this, ros::TransportHints().tcpNoDelay());
+  target_voltage_sub_ = nh_.subscribe<std_msgs::Int32>("target_voltage", 1, &TakasokoSps::targetVoltageCallback, this, ros::TransportHints());
   timer_ = nhp_.createTimer(ros::Duration(1.0 / tm_loop_rate_), &TakasokoSps::powerInfoFunction,this);
 
 }
@@ -110,6 +111,20 @@ void TakasokoSps::powerOffCallback(const std_msgs::EmptyConstPtr &msg)
     }
   */
 
+}
+
+void TakasokoSps::targetVoltageCallback(const std_msgs::Int32ConstPtr &msg)
+{
+  int voltage = msg->data;
+  std::string cmd = "SOUR VOLT " + std::to_string(voltage) + "\n";
+  int length = cmd.size();
+  if(write(sd_, cmd.c_str(), length) == -1)
+    {
+      ROS_ERROR("can not send socket");
+      return;
+    }
+  memset(read_buf_, 0, sizeof(read_buf_));
+  read(sd_, read_buf_, sizeof(read_buf_));
 }
 
 void TakasokoSps::powerInfoFunction(const ros::TimerEvent & e)
